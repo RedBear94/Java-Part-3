@@ -5,6 +5,7 @@ import com.client.CommandType;
 import com.client.command.AuthCommand;
 import com.client.command.BroadcastMessageCommand;
 import com.client.command.PrivateMessageCommand;
+import com.client.command.UpdateUserNicknameCommand;
 import com.company.NetworkServer;
 
 import java.io.*;
@@ -18,6 +19,11 @@ public class ClientHandler {
     private ObjectOutputStream out;
 
     private String nickname;
+
+    long start = System.currentTimeMillis();
+    Thread firstThread = new Thread(() ->{
+        startTimeOut(start, 10);
+    });
 
     public ClientHandler(NetworkServer networkServer, Socket socket) {
         this.networkServer = networkServer;
@@ -37,6 +43,7 @@ public class ClientHandler {
                 } catch (IOException e){
                     System.out.println("Соеденинение с клиентом " + nickname + " было закрыто!");
                 } finally {
+                    firstThread.interrupt();
                     closeConnection();
                 }
             }).start();
@@ -78,6 +85,12 @@ public class ClientHandler {
                     networkServer.broadcastMessage(Command.messageCommand(nickname, message), this);
                     break;
                 }
+                case UPDATE_USER_NICKNAME:
+                    UpdateUserNicknameCommand commandData = (UpdateUserNicknameCommand) command.getData();
+                    String oldNickname = commandData.getOldNickname();
+                    String newNickName = commandData.getNewNickname();
+                    networkServer.updateUsersNicknames(oldNickname, newNickName);
+                    break;
                 default:
                     System.err.println("Unknown type of command : " + command.getType());
                     break;
@@ -97,10 +110,6 @@ public class ClientHandler {
     }
 
     private void authentication() throws IOException {
-        long start = System.currentTimeMillis();
-        Thread firstThread = new Thread(() ->{
-            startTimeOut(start, 10);
-        });
         firstThread.start();
 
         while (true){
@@ -173,4 +182,6 @@ public class ClientHandler {
     public String getNickname() {
         return nickname;
     }
+
+    public void setNickname(String nickname) { this.nickname = nickname; }
 }

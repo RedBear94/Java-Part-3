@@ -2,18 +2,16 @@ package com.company;
 
 import com.client.Command;
 import com.company.auth.AuthService;
-import com.company.auth.BaseAuthService;
+import com.company.auth.DatabaseAuthService;
 import com.company.client.ClientHandler;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
 
 public class NetworkServer {
     private final int port;
@@ -24,11 +22,11 @@ public class NetworkServer {
 
     // CopyOnWriteArrayList - т.к. работа идёт с копией массива, что гарантирует синхронизированную работу с данными
     private final List<ClientHandler> clients = new CopyOnWriteArrayList<>();
-    private final AuthService authService;
+    private final DatabaseAuthService authService;
 
     public NetworkServer(int port) {
         this.port = port;
-        this.authService =  new BaseAuthService();
+        this.authService =  new DatabaseAuthService();
     }
 
     public void start() {
@@ -115,5 +113,23 @@ public class NetworkServer {
             }
         }
         return false;
+    }
+
+
+    public void updateUsersNicknames(String oldUsername, String newUsername) throws IOException {
+        for(ClientHandler client : clients){
+            if(client.getNickname().equals(oldUsername)){
+                client.setNickname(newUsername);
+                try {
+                    authService.UpdateDB(oldUsername, newUsername);
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+                List<String> users = getAllUserNames();
+                broadcastMessage(Command.updateUserListCommand(users), null);
+            }
+        }
     }
 }

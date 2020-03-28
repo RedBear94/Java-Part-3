@@ -3,6 +3,8 @@ package com.home.client.view;
 import com.home.client.controller.ClientController;
 
 import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.List;
@@ -14,6 +16,7 @@ public class ClientChat extends JFrame {
     private JTextField messageTextField;
     private JButton sendButton;
     private JTextArea chatText;
+    private JButton chsngeNickname;
 
     private ClientController controller;
 
@@ -29,6 +32,12 @@ public class ClientChat extends JFrame {
         addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
                 controller.shutdown();
+            }
+        });
+        chsngeNickname.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                controller.openChangeNick();
             }
         });
     }
