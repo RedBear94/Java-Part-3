@@ -2,6 +2,7 @@ package com.home.client.controller;
 
 import com.client.Command;
 import com.home.client.view.AuthDialog;
+import com.home.client.view.ChangeNickname;
 import com.home.client.view.ClientChat;
 import com.home.client.model.NetworkService;
 
@@ -17,12 +18,14 @@ public class ClientController {
     private final NetworkService networkService; // Управление Сервисом
     private final AuthDialog authDialog; // Форма аутентификации
     private final ClientChat clientChat; // Форма чата
+    private final ChangeNickname changeNickname;
     private String nickname;
 
     public ClientController(String serverHost, int serverPort) {
         this.networkService = new NetworkService(serverHost, serverPort);
         this.authDialog = new AuthDialog(this);
         this.clientChat = new ClientChat(this);
+        this.changeNickname = new ChangeNickname(this);
     }
 
     public void runApplication() throws IOException {
@@ -113,5 +116,19 @@ public class ClientController {
         users.remove(nickname); // удалить самого себя
         users.add(0, "All"); // добавить на 0-й индекс отправку для всех
         clientChat.updateUsers(users);
+    }
+
+    public void openChangeNick(){
+        changeNickname.setVisible(true);
+    }
+
+    public void updateNickname(String nickname) {
+        try {
+            networkService.sendCommand(updateUserNickname(this.nickname, nickname));
+            setUserName(nickname);
+            clientChat.setTitle(nickname);
+        } catch (IOException e) {
+            showErrorMessage(e.getMessage());
+        }
     }
 }
