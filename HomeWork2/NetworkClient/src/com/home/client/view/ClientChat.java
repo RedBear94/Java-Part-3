@@ -20,6 +20,8 @@ public class ClientChat extends JFrame {
 
     private ClientController controller;
 
+    public static final int LINE_HISTORY_COUNT = 100;
+
     // Отображение данных на форму чата
     public ClientChat(ClientController controller) {
         this.controller = controller;
@@ -54,6 +56,8 @@ public class ClientChat extends JFrame {
             return;
         }
 
+        message = filterMessage(message); // отфильтровали сообщение
+
         appendOwnMessage(message);
 
         // Проверка кому идёт отправка сообщения и непосредственно отправка серверу
@@ -67,6 +71,12 @@ public class ClientChat extends JFrame {
         messageTextField.setText(null);
     }
 
+    // Фильтрация сообщений
+    private String filterMessage(String message) {
+        message = controller.filterMessage(message);
+        return message;
+    }
+
     public void appendMessage(String message) {
         // invokeLater() - задание текущего Thread-а на очередь к выполнению в главный Thread
         // иными словами обработчик будет поставлен в очередь событий для AWT и будет обработан уже после очередных задач
@@ -75,6 +85,7 @@ public class ClientChat extends JFrame {
             chatText.append(message);
             chatText.append(System.lineSeparator()); // lineSeparator() - вернет разделитель строк вашей ОС
         });
+        controller.appendMessageToUserFile(message, controller.getLogin());
     }
 
 
@@ -95,5 +106,10 @@ public class ClientChat extends JFrame {
             }
             usersList.setModel(model);
         });
+    }
+
+    public void openLocalHistory(){
+        String localHistory = controller.getLocalHistory(LINE_HISTORY_COUNT);
+        chatText.append(localHistory);
     }
 }

@@ -7,7 +7,11 @@ import com.home.client.view.ClientChat;
 import com.home.client.model.NetworkService;
 
 import javax.swing.*;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.client.Command.*;
@@ -20,6 +24,10 @@ public class ClientController {
     private final ClientChat clientChat; // Форма чата
     private final ChangeNickname changeNickname;
     private String nickname;
+    private String login;
+    private String oldNickname;
+
+    private final List<String> badWordsList = new ArrayList<String>();
 
     public ClientController(String serverHost, int serverPort) {
         this.networkService = new NetworkService(serverHost, serverPort);
@@ -47,9 +55,24 @@ public class ClientController {
         networkService.setSuccessfulAuthEvent(nickname -> {
             setUserName(nickname); // При успешной аутентификации устанавливаем принятый nickname
             clientChat.setTitle(nickname);
+            loadBadWord();  // Загрузка списка слов для цензуры
             openChat(); // Закрывается окно для аутентификации и лткрывается окно чата
         });
         authDialog.setVisible(true);
+    }
+
+    // Загрузка списка цензурируемых слов
+    private void loadBadWord() {
+        String badWord;
+        try {
+            Path path = Paths.get("badWord.txt");
+            BufferedReader in = Files.newBufferedReader(path);
+            while((badWord = in.readLine()) != null){
+                badWordsList.add(badWord);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void openChat() {
@@ -57,11 +80,16 @@ public class ClientController {
         // Передаем метод appendMessage из clientChat для
         // Consumer в качестве лямда выражения; см. аналогию в методе runAuthProcess для setSuccessfulAuthEvent
         networkService.setMessageHandler(clientChat::appendMessage);
+        clientChat.openLocalHistory();
         clientChat.setVisible(true);
     }
 
     private void setUserName(String nickname) {
         this.nickname = nickname;
+    }
+
+    public void setOldNickname(String oldNickname) {
+        this.oldNickname = oldNickname;
     }
 
     private void connectToServer() throws IOException {
@@ -76,6 +104,7 @@ public class ClientController {
     // Отправление логина/пароля
     public void sendAuthMessage(String login, String pass) throws IOException {
         networkService.sendCommand(authCommand(login, pass));
+        this.login = login;
     }
 
     public void sendMessageToAllUsers(String message) {
@@ -91,10 +120,6 @@ public class ClientController {
         networkService.close();
     }
 
-    public String getUsername() {
-        return nickname;
-    }
-
     public void sendPrivateMessage(String username, String message) {
         try {
             networkService.sendCommand(privateMessageCommand(username,message));
@@ -108,6 +133,10 @@ public class ClientController {
             clientChat.showError(errorMessage);
         } else if(authDialog.isActive()){
             authDialog.showError(errorMessage);
+        } else if(changeNickname.isActive()){
+            changeNickname.showError(errorMessage);
+            setUserName(oldNickname);
+            clientChat.setTitle(oldNickname);
         }
         System.err.println(errorMessage);
     }
@@ -119,6 +148,7 @@ public class ClientController {
     }
 
     public void openChangeNick(){
+        setOldNickname(nickname);
         changeNickname.setVisible(true);
     }
 
@@ -130,5 +160,65 @@ public class ClientController {
         } catch (IOException e) {
             showErrorMessage(e.getMessage());
         }
+    }
+
+    public void appendMessageToUserFile(String message, String login) {
+        try (OutputStream out = new BufferedOutputStream(new FileOutputStream("history_" + login + ".txt", true))) {
+            byte[] buffer = message.getBytes();
+            out.write(buffer);
+            out.write('\n');
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public String getLogin() {
+        return login;
+    }
+
+    public String getLocalHistory(int lineCount) {
+        String login = getLogin();
+        String history = "";
+        String historyLine;
+
+        List<String> historyList = new ArrayList<String>();
+        try {
+            Path path = Paths.get("history_" + login + ".txt");
+            BufferedReader in = Files.newBufferedReader(path);
+            while((historyLine = in.readLine()) != null){
+                historyList.add(historyLine);
+            }
+
+            int readCount = historyList.size() - lineCount;
+            if(readCount < 0)
+                readCount = 0;
+
+            for(int i = readCount; i < historyList.size(); i++) {
+                history += historyList.get(i) + System.lineSeparator();
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return history;
+    }
+
+    // Фильтрация сообщений
+    public String filterMessage(String message) {
+        int index;
+        int size;
+        for(int i = 0; i < badWordsList.size(); i++) {
+            index = message.toUpperCase().indexOf(badWordsList.get(i).toUpperCase());
+            size = badWordsList.get(i).length();
+            // System.out.println("index = " + index);
+            // System.out.println("size = " + size);
+            if(index >= 0){
+                message = message.substring(0,index) + "[цензура]" + message.substring(index + size);
+            }
+            // message = message.replace(badWordsList.get(i), "[цензура]"); // с учетом регистра
+        }
+        return message;
     }
 }
