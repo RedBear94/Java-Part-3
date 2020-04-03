@@ -119,7 +119,8 @@ public class NetworkService {
         this.messageHandler = messageHandler;
 
         // Consumer<Integer> messageHandler = message -> System.out.printf("%d долларов \n", message);
-        // messageHandler.accept(100); // 100 долларов
+        // messageHandler.accept(100); //
+        // долларов
     }
 
     // Выполниться в случае успешной аутентификации

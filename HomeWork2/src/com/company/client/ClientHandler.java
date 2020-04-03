@@ -10,8 +10,12 @@ import com.company.NetworkServer;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ClientHandler {
+    private final ExecutorService executor;
+
     private final NetworkServer networkServer;
     private final Socket clientSocket;
 
@@ -21,13 +25,14 @@ public class ClientHandler {
     private String nickname;
 
     long start = System.currentTimeMillis();
-    Thread firstThread = new Thread(() ->{
+    Thread timeOutThread = new Thread(() ->{
         startTimeOut(start, 10);
     });
 
     public ClientHandler(NetworkServer networkServer, Socket socket) {
         this.networkServer = networkServer;
         this.clientSocket = socket;
+        executor = Executors.newCachedThreadPool();
         // doHandle(socket);
     }
 
@@ -36,17 +41,50 @@ public class ClientHandler {
             out = new ObjectOutputStream(socket.getOutputStream());
             in = new ObjectInputStream(socket.getInputStream());
 
-            new Thread(() ->{
+            // HomeWork4
+            /*
+            // Вар 1
+            executor.submit(new Runnable() {
+                public void run() {
+                    try {
+                        authentication();
+                        readMessages();
+                    } catch (IOException e){
+                        System.out.println("Соеденинение с клиентом " + nickname + " было закрыто!");
+                    } finally {
+                        timeOutThread.interrupt();
+                        closeConnection();
+                    }
+                }
+            });*/
+
+            // Вар 2
+            executor.execute(
+                    new Thread(() ->{
+                        try {
+                            authentication();
+                            readMessages();
+                        } catch (IOException e){
+                            System.out.println("Соеденинение с клиентом " + nickname + " было закрыто!");
+                        } finally {
+                            timeOutThread.interrupt();
+                            closeConnection();
+                        }
+                    })
+            );
+
+            // Old Ver
+            /*new Thread(() ->{
                 try {
                     authentication();
                     readMessages();
                 } catch (IOException e){
                     System.out.println("Соеденинение с клиентом " + nickname + " было закрыто!");
                 } finally {
-                    firstThread.interrupt();
+                    timeOutThread.interrupt();
                     closeConnection();
                 }
-            }).start();
+            }).start();*/
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -110,7 +148,7 @@ public class ClientHandler {
     }
 
     private void authentication() throws IOException {
-        firstThread.start();
+        timeOutThread.start();
 
         while (true){
             Command command = readCommand();
@@ -121,7 +159,7 @@ public class ClientHandler {
             if (command.getType() == CommandType.AUTH) {
                 boolean successfulAuth = processAuthCommand(command);
                 if(successfulAuth){
-                    firstThread.interrupt();
+                    timeOutThread.interrupt();
                     return;
                 }
             } else {
