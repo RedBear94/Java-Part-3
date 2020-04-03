@@ -69,7 +69,7 @@ public class NetworkService {
                                 if(username != null){
                                     message = username + " :" + message;
                                 }
-                                // accept - пронициализирован в ClientControl в ф-иие openChat()
+                                // accept - пронициализирован в ClientControl в ф-ции openChat()
                                 // через setMessageHandler
                                 messageHandler.accept(message);
                             }

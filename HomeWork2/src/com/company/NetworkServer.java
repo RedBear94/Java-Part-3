@@ -122,13 +122,15 @@ public class NetworkServer {
                 client.setNickname(newUsername);
                 try {
                     authService.UpdateDB(oldUsername, newUsername);
+                    List<String> users = getAllUserNames();
+                    broadcastMessage(Command.updateUserListCommand(users), null);
                 } catch (ClassNotFoundException e) {
                     e.printStackTrace();
                 } catch (SQLException e) {
+                    client.sendMessage(Command.errorCommand("Ошибка обновления имени пользователя, имя занято"));
+                    client.setNickname(oldUsername);
                     e.printStackTrace();
                 }
-                List<String> users = getAllUserNames();
-                broadcastMessage(Command.updateUserListCommand(users), null);
             }
         }
     }
